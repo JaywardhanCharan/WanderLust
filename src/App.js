@@ -1,25 +1,76 @@
-import logo from './logo.svg';
-import './App.css';
+import React, {useState, useEffect} from "react";
+import { CssBaseline, Grid } from "@material-ui/core";
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+import { getPlacesData } from "./api/index";
+import Header from './components/Header/Header';
+import List from './components/List/List';
+import Map from './components/Map/Map';
+
+const App = () =>{
+
+    const [places, setPlaces] = useState([]);
+    const [childClicked, setChildClicked] = useState(null);          //Lifting the state up
+    const [filteredPlaces, setFilteredPlaces] = useState([]);
+
+    const [coordinates, setCoordinates] = useState({});
+    const [bounds, setBounds] = useState({});
+
+    const [isLoading, setIsLoading] = useState(false);
+    const [type, setType] = useState('restaurants');
+    const [rating, setRating] = useState(''); 
+
+
+    useEffect(() => {
+        navigator.geolocation.getCurrentPosition(({ coords: {latitude, longitude} }) => {           //Destructuring
+            setCoordinates({lat: latitude, lng: longitude});
+        })                       
+    }, []);
+
+    useEffect(() => {
+        const filteredPlaces = places.filter((place) => place.rating > rating);
+
+        setFilteredPlaces(filteredPlaces);
+    }, [rating]);
+
+    useEffect(() => {
+        setIsLoading(true);
+        getPlacesData(type, bounds.sw, bounds.ne)
+             .then((data) =>{
+                setPlaces(data);
+                setFilteredPlaces([]);
+                setIsLoading(false);
+
+             })                                        //.then is used because getPlacesData is an asynchronous function
+    }, [type, coordinates, bounds]);
+     
+    return(
+        <>
+            <CssBaseline/>
+            <Header setCoordinates={setCoordinates} />
+            <Grid container spacing={3} style={{width: '100%'}}>
+                <Grid item xs={12} md={4}>
+                    <List 
+                        places={filteredPlaces.length? filteredPlaces : places} //if we have filtered places then pass filtered places otherwise pass places
+                        childClicked={childClicked}
+                        isLoading={isLoading}
+                        type={type}
+                        setType={setType}
+                        rating={rating}
+                        setRating={setRating}
+                    />
+                </Grid>
+                <Grid item xs={12} md={8}>
+                    <Map
+                        setCoordinates={setCoordinates}
+                        setBounds={setBounds}
+                        coordinates={coordinates}
+                        places={filteredPlaces.length? filteredPlaces : places}               // Here we are passing many props but we are passing props only one level down therefore there is not much problem, otherwise we would have to use Redux or useContext
+                        setChildClicked={setChildClicked}
+                    />
+                </Grid>
+            </Grid>
+        </>
+    );
 }
 
-export default App;
+export default App; 
